@@ -14,7 +14,7 @@ export interface ConflictInfo {
 }
 
 /**
- * Check conflicts for a recurring lesson on a given day of week.
+ * Check conflicts for a recurring slot on a given day of week.
  * Excludes the lesson with `excludeId` (for editing).
  */
 export function findRecurringConflicts(
@@ -26,15 +26,22 @@ export function findRecurringConflicts(
 ): ConflictInfo[] {
   const s1 = timeToMinutes(startTime);
   const e1 = s1 + duration;
+  const conflicts: ConflictInfo[] = [];
 
-  return lessons
-    .filter((l) => l.id !== excludeId && l.dayOfWeek === dayOfWeek)
-    .filter((l) => {
-      const s2 = timeToMinutes(l.startTime);
-      const e2 = timeEndMinutes(l.startTime, l.duration);
-      return intervalsOverlap(s1, e1, s2, e2);
-    })
-    .map((l) => ({ lessonId: l.id, lessonTitle: l.title }));
+  for (const l of lessons) {
+    if (l.id === excludeId) continue;
+    for (const slot of l.schedule) {
+      if (slot.dayOfWeek !== dayOfWeek) continue;
+      const s2 = timeToMinutes(slot.startTime);
+      const e2 = s2 + slot.duration;
+      if (intervalsOverlap(s1, e1, s2, e2)) {
+        conflicts.push({ lessonId: l.id, lessonTitle: l.title });
+        break; // one conflict per lesson is enough
+      }
+    }
+  }
+
+  return conflicts;
 }
 
 /**
@@ -59,24 +66,28 @@ export function findDateConflicts(
   // Check regular lessons on this day of week
   for (const lesson of lessons) {
     if (lesson.id === excludeLessonId) continue;
-    if (lesson.dayOfWeek !== targetDow) continue;
 
-    // Check if cancelled on this date
-    const isCancelled = cancelledOccurrences.some(
-      (c) => c.lessonId === lesson.id && c.date === dateStr
-    );
-    if (isCancelled) continue;
+    for (const slot of lesson.schedule) {
+      if (slot.dayOfWeek !== targetDow) continue;
 
-    // Check if rescheduled away from this date
-    const rescheduledAway = rescheduledOccurrences.find(
-      (r) => r.lessonId === lesson.id && r.originalDate === dateStr
-    );
-    if (rescheduledAway) continue;
+      // Check if cancelled on this date
+      const isCancelled = cancelledOccurrences.some(
+        (c) => c.lessonId === lesson.id && c.date === dateStr
+      );
+      if (isCancelled) continue;
 
-    const s2 = timeToMinutes(lesson.startTime);
-    const e2 = timeEndMinutes(lesson.startTime, lesson.duration);
-    if (intervalsOverlap(s1, e1, s2, e2)) {
-      conflicts.push({ lessonId: lesson.id, lessonTitle: lesson.title });
+      // Check if rescheduled away from this date
+      const rescheduledAway = rescheduledOccurrences.find(
+        (r) => r.lessonId === lesson.id && r.originalDate === dateStr
+      );
+      if (rescheduledAway) continue;
+
+      const s2 = timeToMinutes(slot.startTime);
+      const e2 = s2 + slot.duration;
+      if (intervalsOverlap(s1, e1, s2, e2)) {
+        conflicts.push({ lessonId: lesson.id, lessonTitle: lesson.title });
+        break;
+      }
     }
   }
 
@@ -89,7 +100,7 @@ export function findDateConflicts(
     if (!lesson) continue;
 
     const s2 = timeToMinutes(r.newStartTime);
-    const e2 = s2 + (r.newDuration ?? lesson.duration);
+    const e2 = s2 + (r.newDuration ?? lesson.schedule[0]?.duration ?? 60);
     if (intervalsOverlap(s1, e1, s2, e2)) {
       conflicts.push({ lessonId: lesson.id, lessonTitle: `${lesson.title} (перенос)` });
     }

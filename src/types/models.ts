@@ -25,6 +25,12 @@ export enum PaymentStatus {
   Unpaid = 'unpaid',
 }
 
+export interface ScheduleSlot {
+  dayOfWeek: DayOfWeek;
+  startTime: TimeOfDay;
+  duration: number; // minutes
+}
+
 export interface Participant {
   id: UUID;
   name: string;
@@ -45,9 +51,7 @@ export interface PaymentRecord {
 export interface Lesson {
   id: UUID;
   title: string;
-  dayOfWeek: DayOfWeek;
-  startTime: TimeOfDay;
-  duration: number; // minutes
+  schedule: ScheduleSlot[];
   type: LessonType;
   participantIds: UUID[];
   color?: string;

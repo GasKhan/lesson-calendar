@@ -19,7 +19,7 @@ export const INITIAL_STATE: AppState = {
 
 export const STORAGE_KEY = 'lesson-calendar-data';
 export const STORAGE_BACKUP_KEY = 'lesson-calendar-data_backup';
-export const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 2;
 
 export const LESSON_COLORS = [
   '#3b82f6', // blue

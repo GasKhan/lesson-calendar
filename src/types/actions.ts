@@ -1,12 +1,8 @@
 import {
   AppState,
-  CancelledOccurrence,
-  DayOfWeek,
   Lesson,
-  LessonType,
   Participant,
   PaymentStatus,
-  RescheduledOccurrence,
   Settings,
   TimeOfDay,
   UUID,

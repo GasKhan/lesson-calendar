@@ -19,9 +19,10 @@ export default function RescheduleForm({ lesson, originalDate, onClose }: Resche
   const dispatch = useAppDispatch();
   const { lessons, cancelledOccurrences, rescheduledOccurrences } = useAppState();
 
+  const defaultSlot = lesson.schedule[0];
   const [newDate, setNewDate] = useState(originalDate);
-  const [newStartTime, setNewStartTime] = useState<TimeOfDay>(lesson.startTime);
-  const [newDuration, setNewDuration] = useState(lesson.duration);
+  const [newStartTime, setNewStartTime] = useState<TimeOfDay>(defaultSlot?.startTime ?? { hours: 9, minutes: 0 });
+  const [newDuration, setNewDuration] = useState(defaultSlot?.duration ?? 60);
 
   const targetDate = parseDate(newDate);
   const conflicts = findDateConflicts(
@@ -47,7 +48,7 @@ export default function RescheduleForm({ lesson, originalDate, onClose }: Resche
         originalDate,
         newDate,
         newStartTime,
-        newDuration: newDuration !== lesson.duration ? newDuration : undefined,
+        newDuration: defaultSlot && newDuration !== defaultSlot.duration ? newDuration : undefined,
       },
     });
     onClose();

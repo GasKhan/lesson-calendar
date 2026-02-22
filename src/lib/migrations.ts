@@ -4,8 +4,22 @@ import { STORAGE_VERSION } from '@/constants/defaults';
 type Migration = (data: unknown) => unknown;
 
 const migrations: Record<number, Migration> = {
-  // Future migrations go here:
-  // 2: (data) => { /* migrate from v1 to v2 */ return data; }
+  2: (data: unknown) => {
+    const state = data as Record<string, unknown>;
+    const lessons = (state.lessons as Array<Record<string, unknown>>) ?? [];
+    return {
+      ...state,
+      lessons: lessons.map((lesson) => {
+        // Already migrated
+        if (Array.isArray(lesson.schedule)) return lesson;
+        const { dayOfWeek, startTime, duration, ...rest } = lesson;
+        return {
+          ...rest,
+          schedule: [{ dayOfWeek, startTime, duration }],
+        };
+      }),
+    };
+  },
 };
 
 export function migrateState(data: unknown, fromVersion: number): AppState {

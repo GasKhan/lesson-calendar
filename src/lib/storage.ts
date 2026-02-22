@@ -1,6 +1,7 @@
 import { AppState, StorageEnvelope } from '@/types/models';
 import { STORAGE_KEY, STORAGE_BACKUP_KEY, STORAGE_VERSION, INITIAL_STATE } from '@/constants/defaults';
 import { djb2Hash } from './checksum';
+import { migrateState } from './migrations';
 
 function computeChecksum(data: AppState): string {
   return djb2Hash(JSON.stringify(data));
@@ -36,20 +37,27 @@ function saveToLocalStorage(data: AppState): boolean {
   }
 }
 
+function migrateEnvelope(envelope: StorageEnvelope): AppState {
+  if (envelope.version < STORAGE_VERSION) {
+    return migrateState(envelope.data, envelope.version);
+  }
+  return envelope.data;
+}
+
 function loadFromLocalStorage(): AppState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const envelope: StorageEnvelope = JSON.parse(raw);
     if (validateEnvelope(envelope)) {
-      return envelope.data;
+      return migrateEnvelope(envelope);
     }
     // Try backup
     const backupRaw = localStorage.getItem(STORAGE_BACKUP_KEY);
     if (backupRaw) {
       const backup: StorageEnvelope = JSON.parse(backupRaw);
       if (validateEnvelope(backup)) {
-        return backup.data;
+        return migrateEnvelope(backup);
       }
     }
     return null;
@@ -101,7 +109,7 @@ async function loadFromIndexedDB(): Promise<AppState | null> {
           return;
         }
         const envelope: StorageEnvelope = JSON.parse(req.result);
-        resolve(validateEnvelope(envelope) ? envelope.data : null);
+        resolve(validateEnvelope(envelope) ? migrateEnvelope(envelope) : null);
       };
       req.onerror = () => resolve(null);
     });

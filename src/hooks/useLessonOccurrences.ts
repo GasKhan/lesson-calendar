@@ -6,7 +6,6 @@ import {
   CancelledOccurrence,
   RescheduledOccurrence,
   TimeOfDay,
-  DayOfWeek,
 } from '@/types/models';
 import { formatDate, getDayOfWeek } from '@/lib/dates';
 
@@ -15,6 +14,7 @@ export interface LessonOccurrence {
   date: string; // "YYYY-MM-DD"
   startTime: TimeOfDay;
   duration: number;
+  scheduleSlotIndex: number; // which slot in lesson.schedule
   isRescheduled: boolean;
   originalDate?: string;
   isCancelled: boolean;
@@ -33,29 +33,33 @@ export function useLessonOccurrences(
       const dateStr = formatDate(date);
       const dow = getDayOfWeek(date);
 
-      // Regular lessons on this day
+      // Regular lessons on this day — check all schedule slots
       for (const lesson of lessons) {
-        if (lesson.dayOfWeek !== dow) continue;
+        for (let si = 0; si < lesson.schedule.length; si++) {
+          const slot = lesson.schedule[si];
+          if (slot.dayOfWeek !== dow) continue;
 
-        const isCancelled = cancelledOccurrences.some(
-          (c) => c.lessonId === lesson.id && c.date === dateStr
-        );
+          const isCancelled = cancelledOccurrences.some(
+            (c) => c.lessonId === lesson.id && c.date === dateStr
+          );
 
-        const rescheduledAway = rescheduledOccurrences.find(
-          (r) => r.lessonId === lesson.id && r.originalDate === dateStr
-        );
+          const rescheduledAway = rescheduledOccurrences.find(
+            (r) => r.lessonId === lesson.id && r.originalDate === dateStr
+          );
 
-        if (rescheduledAway) continue; // moved to another date
-        if (isCancelled) continue; // cancelled
+          if (rescheduledAway) continue;
+          if (isCancelled) continue;
 
-        occurrences.push({
-          lesson,
-          date: dateStr,
-          startTime: lesson.startTime,
-          duration: lesson.duration,
-          isRescheduled: false,
-          isCancelled: false,
-        });
+          occurrences.push({
+            lesson,
+            date: dateStr,
+            startTime: slot.startTime,
+            duration: slot.duration,
+            scheduleSlotIndex: si,
+            isRescheduled: false,
+            isCancelled: false,
+          });
+        }
       }
 
       // Rescheduled lessons landing on this date
@@ -68,7 +72,8 @@ export function useLessonOccurrences(
           lesson,
           date: dateStr,
           startTime: r.newStartTime,
-          duration: r.newDuration ?? lesson.duration,
+          duration: r.newDuration ?? lesson.schedule[0]?.duration ?? 60,
+          scheduleSlotIndex: 0,
           isRescheduled: true,
           originalDate: r.originalDate,
           isCancelled: false,

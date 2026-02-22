@@ -187,7 +187,8 @@ export function useDragLesson(
 
     // Check if moving back to original recurring slot
     const recurringDate = occ.isRescheduled ? occ.originalDate! : occ.date;
-    const recurringTime = occ.lesson.startTime;
+    const slot = occ.lesson.schedule[occ.scheduleSlotIndex] ?? occ.lesson.schedule[0];
+    const recurringTime = slot?.startTime ?? occ.startTime;
     const isBackToOriginal =
       newDate === recurringDate &&
       newStartTime.hours === recurringTime.hours &&
@@ -201,7 +202,7 @@ export function useDragLesson(
           originalDate,
           newDate,
           newStartTime,
-          newDuration: occ.duration !== occ.lesson.duration ? occ.duration : undefined,
+          newDuration: slot && occ.duration !== slot.duration ? occ.duration : undefined,
         },
       });
     }

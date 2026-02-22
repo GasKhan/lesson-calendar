@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { AppState, TimeOfDay } from '@/types/models';
+import { AppState } from '@/types/models';
 import { getDayOfWeek, formatDate } from '@/lib/dates';
 import { timeToMinutes } from '@/lib/time';
 import { showNotification, canNotify } from '@/lib/notifications';
@@ -21,32 +21,34 @@ export function useNotifications(state: AppState) {
       const beforeMin = state.settings.notificationMinutesBefore;
 
       for (const lesson of state.lessons) {
-        if (lesson.dayOfWeek !== dow) continue;
+        for (const slot of lesson.schedule) {
+          if (slot.dayOfWeek !== dow) continue;
 
-        // Skip if cancelled
-        const isCancelled = state.cancelledOccurrences.some(
-          (c) => c.lessonId === lesson.id && c.date === today
-        );
-        if (isCancelled) continue;
+          // Skip if cancelled
+          const isCancelled = state.cancelledOccurrences.some(
+            (c) => c.lessonId === lesson.id && c.date === today
+          );
+          if (isCancelled) continue;
 
-        // Check if rescheduled away
-        const rescheduled = state.rescheduledOccurrences.find(
-          (r) => r.lessonId === lesson.id && r.originalDate === today
-        );
-        if (rescheduled) continue;
+          // Check if rescheduled away
+          const rescheduled = state.rescheduledOccurrences.find(
+            (r) => r.lessonId === lesson.id && r.originalDate === today
+          );
+          if (rescheduled) continue;
 
-        const lessonMinutes = timeToMinutes(lesson.startTime);
-        const windowStart = lessonMinutes - beforeMin;
+          const lessonMinutes = timeToMinutes(slot.startTime);
+          const windowStart = lessonMinutes - beforeMin;
 
-        if (currentMinutes >= windowStart && currentMinutes < lessonMinutes) {
-          const key = `${lesson.id}-${today}`;
-          if (!sentRef.current.has(key)) {
-            sentRef.current.add(key);
-            const mins = lessonMinutes - currentMinutes;
-            showNotification(
-              lesson.title,
-              `Начало через ${mins} мин.`
-            );
+          if (currentMinutes >= windowStart && currentMinutes < lessonMinutes) {
+            const key = `${lesson.id}-${today}-${slot.dayOfWeek}-${slot.startTime.hours}-${slot.startTime.minutes}`;
+            if (!sentRef.current.has(key)) {
+              sentRef.current.add(key);
+              const mins = lessonMinutes - currentMinutes;
+              showNotification(
+                lesson.title,
+                `Начало через ${mins} мин.`
+              );
+            }
           }
         }
       }

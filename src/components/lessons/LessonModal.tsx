@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { LessonOccurrence } from '@/hooks/useLessonOccurrences';
 import { useAppState, useAppDispatch } from '@/contexts/AppContext';
-import { LessonType, PaymentStatus } from '@/types/models';
+import { LessonType, PaymentStatus, ScheduleSlot } from '@/types/models';
 import { formatTime } from '@/lib/time';
 import { formatMonth } from '@/lib/dates';
 import { DAY_NAMES_FULL } from '@/lib/dates';
@@ -96,10 +96,6 @@ export default function LessonModal({ occurrence, onClose }: LessonModalProps) {
           {/* Info */}
           <div className="flex flex-col gap-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-text-muted">День:</span>
-              <span className="text-text-primary">{DAY_NAMES_FULL[lesson.dayOfWeek]}</span>
-            </div>
-            <div className="flex justify-between">
               <span className="text-text-muted">Дата:</span>
               <span className="text-text-primary">{date}</span>
             </div>
@@ -114,6 +110,19 @@ export default function LessonModal({ occurrence, onClose }: LessonModalProps) {
               <span className="text-text-primary">
                 {lesson.type === LessonType.Paid ? 'Платный' : 'Бесплатный'}
               </span>
+            </div>
+            {/* Schedule slots */}
+            <div className="flex flex-col gap-1">
+              <span className="text-text-muted">Расписание:</span>
+              {lesson.schedule.map((slot: ScheduleSlot, i: number) => {
+                const slotEnd = slot.startTime.hours * 60 + slot.startTime.minutes + slot.duration;
+                const slotEndTime = { hours: Math.floor(slotEnd / 60), minutes: slotEnd % 60 };
+                return (
+                  <span key={i} className="text-text-primary ml-2">
+                    {DAY_NAMES_FULL[slot.dayOfWeek]} {formatTime(slot.startTime)}–{formatTime(slotEndTime)}
+                  </span>
+                );
+              })}
             </div>
             {isRescheduled && (
               <div className="text-xs text-warning">Этот урок перенесён</div>

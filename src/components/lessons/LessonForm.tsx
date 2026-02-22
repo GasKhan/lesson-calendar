@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Lesson, DayOfWeek, LessonType, TimeOfDay } from '@/types/models';
+import { useState } from 'react';
+import { Lesson, DayOfWeek, LessonType, TimeOfDay, ScheduleSlot } from '@/types/models';
 import { useAppState, useAppDispatch } from '@/contexts/AppContext';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { DAY_NAMES_FULL } from '@/lib/dates';
@@ -18,18 +18,22 @@ interface LessonFormProps {
   onClose: () => void;
 }
 
+function createSlot(dayOfWeek?: DayOfWeek, hour?: number): ScheduleSlot {
+  return {
+    dayOfWeek: dayOfWeek ?? DayOfWeek.Monday,
+    startTime: { hours: hour ?? 9, minutes: 0 },
+    duration: 60,
+  };
+}
+
 export default function LessonForm({ lesson, initialDayOfWeek, initialHour, onClose }: LessonFormProps) {
   const dispatch = useAppDispatch();
   const { participants } = useAppState();
 
   const [title, setTitle] = useState(lesson?.title ?? '');
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>(
-    lesson?.dayOfWeek ?? initialDayOfWeek ?? DayOfWeek.Monday
+  const [schedule, setSchedule] = useState<ScheduleSlot[]>(
+    lesson?.schedule ?? [createSlot(initialDayOfWeek, initialHour)]
   );
-  const [startTime, setStartTime] = useState<TimeOfDay>(
-    lesson?.startTime ?? { hours: initialHour ?? 9, minutes: 0 }
-  );
-  const [duration, setDuration] = useState(lesson?.duration ?? 60);
   const [type, setType] = useState<LessonType>(lesson?.type ?? LessonType.Paid);
   const [color, setColor] = useState(lesson?.color ?? LESSON_COLORS[0]);
   const [notes, setNotes] = useState(lesson?.notes ?? '');
@@ -37,12 +41,25 @@ export default function LessonForm({ lesson, initialDayOfWeek, initialHour, onCl
     lesson?.participantIds ?? []
   );
 
-  const conflicts = useConflictDetection(dayOfWeek, startTime, duration, lesson?.id);
+  const conflicts = useConflictDetection(schedule, lesson?.id);
   const hasConflicts = conflicts.length > 0;
+
+  const updateSlot = (index: number, updates: Partial<ScheduleSlot>) => {
+    setSchedule((prev) => prev.map((s, i) => (i === index ? { ...s, ...updates } : s)));
+  };
+
+  const addSlot = () => {
+    setSchedule((prev) => [...prev, createSlot()]);
+  };
+
+  const removeSlot = (index: number) => {
+    if (schedule.length <= 1) return;
+    setSchedule((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || hasConflicts) return;
+    if (!title.trim() || hasConflicts || schedule.length === 0) return;
 
     if (lesson) {
       dispatch({
@@ -50,9 +67,7 @@ export default function LessonForm({ lesson, initialDayOfWeek, initialHour, onCl
         payload: {
           id: lesson.id,
           title: title.trim(),
-          dayOfWeek,
-          startTime,
-          duration,
+          schedule,
           type,
           color,
           notes: notes.trim() || undefined,
@@ -64,9 +79,7 @@ export default function LessonForm({ lesson, initialDayOfWeek, initialHour, onCl
         type: 'LESSON_ADD',
         payload: {
           title: title.trim(),
-          dayOfWeek,
-          startTime,
-          duration,
+          schedule,
           type,
           color,
           notes: notes.trim() || undefined,
@@ -93,28 +106,50 @@ export default function LessonForm({ lesson, initialDayOfWeek, initialHour, onCl
         required
       />
 
-      <Select
-        label="День недели"
-        value={String(dayOfWeek)}
-        onChange={(e) => setDayOfWeek(Number(e.target.value) as DayOfWeek)}
-        options={DAY_NAMES_FULL.map((name, i) => ({ value: String(i), label: name }))}
-      />
-
-      <div className="grid grid-cols-2 gap-3">
-        <TimePicker
-          label="Начало"
-          value={startTime}
-          onChange={setStartTime}
-        />
-        <Input
-          label="Длительность (мин)"
-          type="number"
-          min={15}
-          max={480}
-          step={15}
-          value={String(duration)}
-          onChange={(e) => setDuration(Number(e.target.value))}
-        />
+      {/* Schedule slots */}
+      <div className="flex flex-col gap-3">
+        <label className="text-sm font-medium text-text-secondary">Расписание</label>
+        {schedule.map((slot, i) => (
+          <div key={i} className="flex flex-col gap-2 p-3 rounded-lg bg-bg-secondary border border-border-light">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted font-medium">Слот {i + 1}</span>
+              {schedule.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSlot(i)}
+                  className="text-xs text-danger hover:text-danger/80"
+                >
+                  Удалить
+                </button>
+              )}
+            </div>
+            <Select
+              label="День недели"
+              value={String(slot.dayOfWeek)}
+              onChange={(e) => updateSlot(i, { dayOfWeek: Number(e.target.value) as DayOfWeek })}
+              options={DAY_NAMES_FULL.map((name, idx) => ({ value: String(idx), label: name }))}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <TimePicker
+                label="Начало"
+                value={slot.startTime}
+                onChange={(startTime) => updateSlot(i, { startTime })}
+              />
+              <Input
+                label="Длительность (мин)"
+                type="number"
+                min={15}
+                max={480}
+                step={15}
+                value={String(slot.duration)}
+                onChange={(e) => updateSlot(i, { duration: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+        ))}
+        <Button type="button" variant="secondary" size="sm" onClick={addSlot}>
+          + Добавить день
+        </Button>
       </div>
 
       <Select
