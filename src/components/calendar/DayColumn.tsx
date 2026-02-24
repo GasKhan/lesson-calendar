@@ -85,8 +85,8 @@ export default function DayColumn({
               key={`${occ.lesson.id}-${occ.date}-${idx}`}
               occurrence={occ}
               startHour={startHour}
-              onClick={() => onLessonClick(occ)}
-              onDragStart={onDragStart}
+              onClick={() => !occ.isRescheduledAway && onLessonClick(occ)}
+              onDragStart={occ.isRescheduledAway ? undefined : onDragStart}
               isDragSource={isDragSource}
             />
           );

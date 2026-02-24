@@ -18,6 +18,8 @@ export interface LessonOccurrence {
   isRescheduled: boolean;
   originalDate?: string;
   isCancelled: boolean;
+  isRescheduledAway: boolean;
+  rescheduledToDate?: string;
 }
 
 export function useLessonOccurrences(
@@ -47,8 +49,22 @@ export function useLessonOccurrences(
             (r) => r.lessonId === lesson.id && r.originalDate === dateStr
           );
 
-          if (rescheduledAway) continue;
           if (isCancelled) continue;
+
+          if (rescheduledAway) {
+            occurrences.push({
+              lesson,
+              date: dateStr,
+              startTime: slot.startTime,
+              duration: slot.duration,
+              scheduleSlotIndex: si,
+              isRescheduled: false,
+              isCancelled: false,
+              isRescheduledAway: true,
+              rescheduledToDate: rescheduledAway.newDate,
+            });
+            continue;
+          }
 
           occurrences.push({
             lesson,
@@ -58,6 +74,7 @@ export function useLessonOccurrences(
             scheduleSlotIndex: si,
             isRescheduled: false,
             isCancelled: false,
+            isRescheduledAway: false,
           });
         }
       }
@@ -77,6 +94,7 @@ export function useLessonOccurrences(
           isRescheduled: true,
           originalDate: r.originalDate,
           isCancelled: false,
+          isRescheduledAway: false,
         });
       }
     }
