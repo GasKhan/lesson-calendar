@@ -15,6 +15,13 @@ export default function Header({ onOpenSettings, onAddLesson }: HeaderProps) {
         Lesson Calendar
       </h1>
       <div className="flex items-center gap-2">
+        <a
+          href="/admin"
+          className="inline-flex items-center justify-center rounded-lg font-medium transition-colors
+            px-2 py-1 text-sm bg-transparent text-text-secondary hover:bg-bg-tertiary"
+        >
+          Ученики
+        </a>
         <Button size="sm" onClick={onAddLesson}>
           + Урок
         </Button>
